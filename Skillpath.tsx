@@ -24,7 +24,7 @@ const CACHE_KEY = "skillpath:country"
 
 // Defaults live here so each destructure, the CSS initial-value and the Framer
 // property controls can't drift apart.
-const DEFAULT_ACCENT = "#4F46E5"
+const DEFAULT_ACCENT = "#FFF546" // highlight fill, sits behind black text
 
 const DEFAULT_HEADLINE = "Learn the skills that actually ship."
 const DEFAULT_SUBHEADLINE =
@@ -41,17 +41,29 @@ const DEFAULT_LINKS: FooterLink[] = [
     { label: "Contact", url: "#" },
 ]
 
-// One palette for all three sections — the main practical win of merging.
-const FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-const INK = "#111114" // headings
-const MUTED = "#5F5F6B" // body copy
-const SUBTLE = "#6B6B76" // notices
-// #8A8A96 measured 3.27:1 against the canvas — below the 4.5:1 AA floor for
-// normal-size text. #6E6E7A is 4.82:1 and still reads as the quietest tone.
-const FAINT = "#6E6E7A" // copyright
-const LINE = "#ECECF1" // borders
-const SURFACE = "#FFFFFF" // cards, hero background
-const CANVAS = "#FAFAFB" // section backgrounds
+/**
+ * One palette and type scale for all three sections.
+ *
+ * The look is editorial rather than the usual soft-SaaS default: pure black on
+ * white, square corners everywhere, a display grotesk for headings, a serif for
+ * reading copy, and a monospace for small labels. The accent is a highlight
+ * fill, not a button colour — buttons are black, which is what keeps them
+ * legible whatever accent a designer picks.
+ */
+const FONT_DISPLAY =
+    "'Radio Canada Big', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+const FONT_SERIF =
+    "'Source Serif 4', 'Source Serif Pro', Georgia, 'Times New Roman', serif"
+const FONT_MONO =
+    "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+
+const INK = "#000000" // headings, body, buttons
+const MUTED = "#4A4F5C" // reading copy
+const SUBTLE = "#5A6070" // notices
+const FAINT = "#4A4F5C" // copyright, on the yellow footer
+const LINE = "#DBE0EC" // hairline rules and card borders
+const SURFACE = "#FFFFFF" // cards
+const CANVAS = "#F6F8FB" // section backgrounds
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared stylesheet
@@ -66,13 +78,14 @@ const CANVAS = "#FAFAFB" // section backgrounds
 // ─────────────────────────────────────────────────────────────────────────────
 
 const stylesheet = `
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Radio+Canada+Big:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap');
+
 /**
  * Registering the property gives it a type. Without this, an accent that isn't a
  * valid color (an empty control, a token that fails to resolve) makes every
  * var(--sp-accent) declaration "invalid at computed value time" — which does NOT
- * fall back to the previous declaration, it falls back to unset. The retry button
- * would then be white text on a transparent background: invisible. With a
- * registered initial-value, a bad accent degrades to the default indigo instead.
+ * fall back to the previous declaration, it falls back to unset. With a
+ * registered initial-value, a bad accent degrades to the default instead.
  */
 @property --sp-accent {
     syntax: "<color>";
@@ -85,7 +98,6 @@ const stylesheet = `
 /**
  * The pulse lives on a class rather than in the inline style object, because an
  * inline animation cannot be switched off by a media query without !important.
- * Moving it here is what makes the reduced-motion rule below possible at all.
  */
 .skillpath-shimmer {
     animation: skillpath-pulse 1.4s ease-in-out infinite;
@@ -93,56 +105,74 @@ const stylesheet = `
 
 /**
  * A cold start can leave these placeholders pulsing for 30 seconds, so this is
- * not a token gesture: it's a long-running animation nobody asked for. Reduced
- * motion stops it dead — the placeholders stay visible as flat blocks, which
- * still reads as "content is coming", and the live region announces the loading
- * state regardless.
+ * not a token gesture: it's a long-running animation nobody asked for.
  */
 @media (prefers-reduced-motion: reduce) {
-    .skillpath-shimmer {
-        animation: none;
-    }
-
-    .skillpath-cta {
-        transition: none;
-    }
+    .skillpath-shimmer { animation: none; }
+    .skillpath-cta { transition: none; }
 }
 
+/**
+ * The accent is a highlight fill, so it sits behind black text — never behind
+ * white. That is why the buttons below are black rather than accent-coloured:
+ * a designer can pick any accent without making a control unreadable.
+ */
 .skillpath-chip {
-    /* Fallback first: a browser without color-mix() drops the line it cannot
-       parse and keeps this neutral tint, so the chip is never unreadable. */
-    background: rgba(127, 127, 127, 0.12);
-    background: color-mix(in srgb, var(--sp-accent) 10%, transparent);
-    color: var(--sp-accent);
+    background: ${SURFACE};
+    color: ${INK};
+    border: 1px solid ${INK};
+}
+
+.skillpath-badge {
+    background: rgba(127, 127, 127, 0.15);
+    background: var(--sp-accent);
+    color: ${INK};
 }
 
 .skillpath-retry,
 .skillpath-cta {
+    background: ${INK};
+    color: ${SURFACE};
+}
+
+/* The small square marker inside a button, picked up from the accent. */
+.skillpath-retry::before,
+.skillpath-cta::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 10px;
+    vertical-align: 1px;
     background: var(--sp-accent);
 }
 
-.skillpath-cta:hover {
-    filter: brightness(0.92);
+.skillpath-cta:hover,
+.skillpath-retry:hover {
+    background: #1C1C1C;
 }
 
 /**
- * :focus-visible rather than :focus, so a mouse click doesn't leave a ring
- * behind but keyboard tabbing always shows one. The offset puts the ring
- * outside the button, separated by the page background, which keeps it visible
- * against a button that is itself painted in the accent colour.
+ * Black rather than the accent: this has to stay visible on white cards, on the
+ * grey section, and on the yellow footer, whatever the accent is set to.
  */
-/* A text field is always keyboard-relevant, so :focus rather than
-   :focus-visible — a click into it should show the ring too. */
-.skillpath-search:focus {
-    outline: 3px solid var(--sp-accent);
-    outline-offset: 2px;
-    border-color: transparent;
+.skillpath-retry:focus-visible,
+.skillpath-cta:focus-visible,
+.skillpath-search:focus-visible,
+.skillpath-footer-link:focus-visible {
+    outline: 2px solid ${INK};
+    outline-offset: 3px;
 }
 
-.skillpath-retry:focus-visible,
-.skillpath-cta:focus-visible {
-    outline: 3px solid var(--sp-accent);
-    outline-offset: 3px;
+.skillpath-search:focus {
+    outline: 2px solid ${INK};
+    outline-offset: 0;
+    border-color: ${INK};
+}
+
+.skillpath-footer-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 `
 
@@ -453,6 +483,7 @@ export function Hero(props: HeroProps) {
         >
             <style>{stylesheet}</style>
             <div style={heroStyles.inner}>
+                <p style={heroStyles.eyebrow}>Skillpath</p>
                 <h1 style={heroStyles.headline}>{headline}</h1>
                 <p style={heroStyles.sub}>{subheadline}</p>
                 <a
@@ -472,39 +503,59 @@ export function Hero(props: HeroProps) {
 const heroStyles: Record<string, CSSProperties> = {
     section: {
         width: "100%",
-        padding: "clamp(72px, 12vw, 132px) clamp(16px, 4vw, 24px)",
-        background: SURFACE,
+        padding: "clamp(96px, 15vw, 180px) clamp(16px, 4vw, 32px)",
+        // The reference leads with a soft sky-to-paper wash rather than a flat
+        // white; it gives the page somewhere to start before the black type.
+        background:
+            "linear-gradient(180deg, #C8DCF7 0%, #DEE8F3 38%, #F0EDE6 72%, #FFFFFF 100%)",
         boxSizing: "border-box",
-        fontFamily: FONT,
+        fontFamily: FONT_DISPLAY,
     },
-    // Narrower than the 1200px grid below it: long headlines are hard to read
-    // edge-to-edge, and the contrast gives the page a centre of gravity.
-    inner: { maxWidth: 720, margin: "0 auto", textAlign: "center" },
+    inner: { maxWidth: 1100, margin: "0 auto", textAlign: "center" },
+    eyebrow: {
+        margin: "0 0 28px",
+        fontFamily: FONT_MONO,
+        fontSize: 13,
+        fontWeight: 500,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: INK,
+    },
     headline: {
+        // break-word, not anywhere: a headline should wrap between words
+        // normally and only break inside one as a last resort.
+        overflowWrap: "break-word",
         margin: 0,
-        fontSize: "clamp(34px, 6vw, 60px)",
-        lineHeight: 1.08,
-        letterSpacing: "-0.03em",
+        fontFamily: FONT_DISPLAY,
+        // Tight tracking is the signature of this type treatment — the display
+        // face is drawn to be set close at large sizes.
+        fontSize: "clamp(40px, 7.5vw, 84px)",
+        lineHeight: 1.02,
+        letterSpacing: "-0.045em",
         fontWeight: 600,
         color: INK,
     },
     sub: {
-        margin: "18px auto 0",
-        maxWidth: 560,
-        fontSize: "clamp(16px, 2vw, 18.5px)",
-        lineHeight: 1.55,
+        overflowWrap: "break-word",
+        margin: "26px auto 0",
+        maxWidth: 620,
+        fontFamily: FONT_SERIF,
+        fontSize: "clamp(17px, 2.2vw, 21px)",
+        lineHeight: 1.5,
+        letterSpacing: "-0.01em",
         color: MUTED,
     },
     cta: {
         display: "inline-block",
-        marginTop: 32,
-        padding: "14px 28px",
-        borderRadius: 10,
-        color: SURFACE,
-        fontSize: 16,
-        fontWeight: 600,
+        marginTop: 40,
+        padding: "16px 26px",
+        borderRadius: 0, // square corners throughout
+        fontFamily: FONT_MONO,
+        fontSize: 14,
+        fontWeight: 500,
+        letterSpacing: "0.01em",
         textDecoration: "none",
-        transition: "filter 120ms ease",
+        transition: "background 140ms ease",
     },
 }
 
@@ -797,6 +848,7 @@ function CoursesSection(props: CoursesProps) {
                 </p>
 
                 <header style={courseStyles.header}>
+                    <p style={courseStyles.eyebrow}>Courses</p>
                     <h2
                         id="skillpath-courses-heading"
                         style={courseStyles.heading}
@@ -949,7 +1001,12 @@ function CourseCard({
                         </span>
                     )}
                     {course.refundable === true && (
-                        <span style={courseStyles.refund}>Refundable</span>
+                        <span
+                            className="skillpath-badge"
+                            style={courseStyles.refund}
+                        >
+                            Refundable
+                        </span>
                     )}
                 </div>
             )}
@@ -1014,31 +1071,58 @@ function Skeletons() {
 const courseStyles: Record<string, CSSProperties> = {
     section: {
         width: "100%",
-        padding: "clamp(56px, 8vw, 80px) clamp(16px, 4vw, 24px)",
-        background: CANVAS,
+        padding: "clamp(72px, 10vw, 120px) clamp(16px, 4vw, 32px)",
+        background: SURFACE,
         boxSizing: "border-box",
-        fontFamily: FONT,
+        fontFamily: FONT_DISPLAY,
     },
     // Caps the grid at 3 columns on desktop without a media query.
     inner: { maxWidth: 1200, margin: "0 auto" },
-    header: { marginBottom: 20 },
+    header: { marginBottom: 28 },
+    eyebrow: {
+        margin: "0 0 18px",
+        fontFamily: FONT_MONO,
+        fontSize: 13,
+        fontWeight: 500,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: INK,
+    },
+    heading: {
+        margin: 0,
+        fontFamily: FONT_DISPLAY,
+        fontSize: "clamp(30px, 4.6vw, 46px)",
+        lineHeight: 1.06,
+        letterSpacing: "-0.035em",
+        color: INK,
+        fontWeight: 600,
+        maxWidth: 820,
+    },
+    notice: {
+        margin: "14px 0 0",
+        fontFamily: FONT_SERIF,
+        fontSize: 16,
+        color: SUBTLE,
+    },
     // Wraps to its own line on narrow screens without a breakpoint.
     controls: {
         display: "flex",
         flexWrap: "wrap",
-        gap: 12,
-        marginBottom: 32,
+        gap: 10,
+        marginBottom: 36,
+        paddingTop: 28,
+        borderTop: `1px solid ${LINE}`,
     },
     search: {
         flex: "1 1 220px",
-        maxWidth: 340,
-        padding: "11px 14px",
-        fontSize: 15,
-        fontFamily: "inherit",
+        maxWidth: 320,
+        padding: "12px 14px",
+        fontSize: 14,
+        fontFamily: FONT_MONO,
         color: INK,
         background: SURFACE,
         border: `1px solid ${LINE}`,
-        borderRadius: 10,
+        borderRadius: 0,
         boxSizing: "border-box",
     },
     sort: {
@@ -1047,92 +1131,94 @@ const courseStyles: Record<string, CSSProperties> = {
         flex: "0 1 auto",
         minWidth: 0,
         maxWidth: "100%",
-        padding: "11px 14px",
-        fontSize: 15,
-        fontFamily: "inherit",
+        padding: "12px 14px",
+        fontSize: 14,
+        fontFamily: FONT_MONO,
         color: INK,
         background: SURFACE,
         border: `1px solid ${LINE}`,
-        borderRadius: 10,
+        borderRadius: 0,
         cursor: "pointer",
         boxSizing: "border-box",
     },
-    heading: {
-        margin: 0,
-        fontSize: "clamp(28px, 4vw, 40px)",
-        lineHeight: 1.15,
-        letterSpacing: "-0.02em",
-        color: INK,
-        fontWeight: 600,
-    },
-    notice: { margin: "10px 0 0", fontSize: 14, color: SUBTLE },
     /**
      * auto-fill + a 300px floor gives 3 / 2 / 1 columns at desktop / tablet /
      * mobile and every width in between, with no breakpoints and no assumption
      * about how many cards arrive.
      *
      * The floor is min(300px, 100%), not a bare 300px: a bare floor is a hard
-     * minimum, so on a 320px phone the 300px track plus 48px of padding
-     * overflowed the viewport by 28px and the page scrolled sideways. min() lets
-     * the track shrink below 300px once the container itself is narrower, which
-     * is the only case it changes.
+     * minimum, so on a 320px phone the 300px track plus the section padding
+     * overflowed the viewport and the page scrolled sideways. min() lets the
+     * track shrink once the container itself is narrower.
      */
     grid: {
         display: "grid",
         gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
-        gap: 20,
+        gap: 0,
         alignItems: "stretch",
+        borderTop: `1px solid ${LINE}`,
+        borderLeft: `1px solid ${LINE}`,
     },
+    /**
+     * Cards share hairlines rather than floating as separate rounded boxes —
+     * one grid rule instead of ten outlines, which is what makes the layout read
+     * as a table of contents rather than a card wall.
+     */
     card: {
         display: "flex",
         flexDirection: "column",
         // A grid item's default min-width is auto, so its min-content size — one
         // very long unbroken word — can force the track wider than the container
-        // and scroll the whole page sideways. This lets the track actually shrink.
+        // and scroll the whole page sideways.
         minWidth: 0,
         background: SURFACE,
-        border: `1px solid ${LINE}`,
-        borderRadius: 16,
-        padding: 22,
+        borderRight: `1px solid ${LINE}`,
+        borderBottom: `1px solid ${LINE}`,
+        borderRadius: 0,
+        padding: "26px 24px 28px",
         height: "100%",
         boxSizing: "border-box",
     },
-    chipRow: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 },
+    chipRow: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 },
     chip: {
         overflowWrap: "anywhere",
-        fontSize: 12,
-        fontWeight: 600,
-        padding: "5px 10px",
-        borderRadius: 999,
-        letterSpacing: "0.01em",
+        fontFamily: FONT_MONO,
+        fontSize: 11,
+        fontWeight: 500,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        padding: "5px 9px",
+        borderRadius: 0,
     },
     refund: {
-        fontSize: 12,
-        fontWeight: 600,
-        padding: "5px 10px",
-        borderRadius: 999,
-        color: "#186A3B",
-        background: "#E7F6EC",
+        fontFamily: FONT_MONO,
+        fontSize: 11,
+        fontWeight: 500,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        padding: "5px 9px",
+        borderRadius: 0,
     },
     name: {
         // `anywhere` rather than `break-word`: both wrap a long word, but only
         // `anywhere` also shrinks the min-content contribution that the grid
-        // track measures. Course names are API data — a URL or a long compound
-        // word would otherwise overflow the card.
+        // track measures. Course names are API data.
         overflowWrap: "anywhere",
-        margin: "0 0 8px",
-        fontSize: 19,
-        lineHeight: 1.3,
+        margin: "0 0 10px",
+        fontFamily: FONT_DISPLAY,
+        fontSize: 21,
+        lineHeight: 1.15,
         fontWeight: 600,
         color: INK,
-        letterSpacing: "-0.01em",
+        letterSpacing: "-0.025em",
     },
     // Descriptions run 107–132 chars, so this genuinely truncates at card width.
     desc: {
         overflowWrap: "anywhere",
         margin: 0,
-        fontSize: 14.5,
-        lineHeight: 1.55,
+        fontFamily: FONT_SERIF,
+        fontSize: 15.5,
+        lineHeight: 1.5,
         color: MUTED,
         display: "-webkit-box",
         WebkitLineClamp: 2,
@@ -1141,46 +1227,57 @@ const courseStyles: Record<string, CSSProperties> = {
     },
     // marginTop:auto pins the price to the bottom so cards align on a row of
     // mixed heights.
-    priceRow: { marginTop: "auto", paddingTop: 20 },
+    priceRow: {
+        marginTop: "auto",
+        paddingTop: 26,
+    },
     price: {
-        fontSize: 20,
-        fontWeight: 650,
+        fontFamily: FONT_DISPLAY,
+        fontSize: 24,
+        fontWeight: 600,
         color: INK,
-        letterSpacing: "-0.01em",
+        letterSpacing: "-0.035em",
     },
     state: {
         textAlign: "center",
-        padding: "64px 24px",
-        background: SURFACE,
+        padding: "80px 24px",
+        background: CANVAS,
         border: `1px solid ${LINE}`,
-        borderRadius: 16,
+        borderRadius: 0,
     },
     stateTitle: {
         // Interpolates the search query, i.e. arbitrary visitor input.
         overflowWrap: "anywhere",
-        margin: "0 0 6px",
-        fontSize: 17,
+        margin: "0 0 10px",
+        fontFamily: FONT_DISPLAY,
+        fontSize: "clamp(22px, 3vw, 30px)",
+        lineHeight: 1.1,
+        letterSpacing: "-0.03em",
         fontWeight: 600,
         color: INK,
     },
-    stateBody: { margin: 0, fontSize: 14.5, color: SUBTLE },
-    retry: {
-        marginTop: 20,
-        border: "none",
-        color: SURFACE,
-        fontSize: 15,
-        fontWeight: 600,
-        padding: "11px 22px",
-        borderRadius: 10,
-        cursor: "pointer",
-        fontFamily: "inherit",
+    stateBody: {
+        margin: 0,
+        fontFamily: FONT_SERIF,
+        fontSize: 16.5,
+        color: SUBTLE,
     },
-    // The pulse itself is applied by the .skillpath-shimmer class, not here —
-    // see the stylesheet for why.
+    retry: {
+        marginTop: 28,
+        border: "none",
+        fontFamily: FONT_MONO,
+        fontSize: 14,
+        fontWeight: 500,
+        padding: "14px 24px",
+        borderRadius: 0,
+        cursor: "pointer",
+        transition: "background 140ms ease",
+    },
+    // The pulse itself is applied by the .skillpath-shimmer class, not here.
     shimmer: {
         display: "block",
-        background: LINE,
-        borderRadius: 6,
+        background: "#E8ECF3",
+        borderRadius: 0,
     },
 }
 
@@ -1191,6 +1288,7 @@ const courseStyles: Record<string, CSSProperties> = {
 type FooterProps = {
     company?: string
     links?: FooterLink[]
+    accent?: string
     style?: CSSProperties // Framer passes layout styles in through this
 }
 
@@ -1201,7 +1299,12 @@ type FooterProps = {
  * @framerSupportedLayoutHeight auto
  */
 export function Footer(props: FooterProps) {
-    const { company, links = DEFAULT_LINKS, style } = props
+    const {
+        company,
+        links = DEFAULT_LINKS,
+        accent = DEFAULT_ACCENT,
+        style,
+    } = props
 
     // Same reason as the hero's link: a destructuring default only fires for
     // `undefined`, and a cleared Framer text field can arrive as null or "".
@@ -1222,7 +1325,16 @@ export function Footer(props: FooterProps) {
     const year = new Date().getFullYear()
 
     return (
-        <footer style={{ ...footerStyles.footer, ...style }}>
+        <footer
+            style={
+                {
+                    ...footerStyles.footer,
+                    ...style,
+                    "--sp-accent": accent,
+                } as CSSProperties
+            }
+        >
+            <style>{stylesheet}</style>
             <div style={footerStyles.inner}>
                 <nav aria-label="Footer" style={footerStyles.links}>
                     {visible.map((link, i) => (
@@ -1231,6 +1343,7 @@ export function Footer(props: FooterProps) {
                             // index is the only stable identity a link has here.
                             key={i}
                             href={typeof link.url === "string" ? link.url : "#"}
+                            className="skillpath-footer-link"
                             style={footerStyles.link}
                         >
                             {link.label}
@@ -1241,18 +1354,24 @@ export function Footer(props: FooterProps) {
                     © {year} {name}. All rights reserved.
                 </p>
             </div>
+            {/* Decorative closing wordmark — hidden from assistive tech because
+                the company name is already announced in the line above. */}
+            <div aria-hidden="true" style={footerStyles.wordmark}>
+                {name}
+            </div>
         </footer>
     )
 }
 
 const footerStyles: Record<string, CSSProperties> = {
+    // The reference ends on a full bleed of the accent rather than a quiet grey
+    // strip. It gives the page a hard stop.
     footer: {
         width: "100%",
-        padding: "clamp(32px, 5vw, 44px) clamp(16px, 4vw, 24px)",
-        background: CANVAS,
-        borderTop: `1px solid ${LINE}`,
+        padding: "clamp(36px, 5vw, 52px) clamp(16px, 4vw, 32px)",
+        background: "var(--sp-accent)",
         boxSizing: "border-box",
-        fontFamily: FONT,
+        fontFamily: FONT_DISPLAY,
     },
     // Row on desktop, stacked on narrow screens — flexWrap does it without a
     // breakpoint.
@@ -1261,20 +1380,37 @@ const footerStyles: Record<string, CSSProperties> = {
         margin: "0 auto",
         display: "flex",
         flexWrap: "wrap",
-        alignItems: "center",
+        alignItems: "baseline",
         justifyContent: "space-between",
-        gap: 16,
+        gap: 18,
     },
-    links: { display: "flex", flexWrap: "wrap", gap: 24 },
+    links: { display: "flex", flexWrap: "wrap", gap: 26 },
     link: {
-        fontSize: 14.5,
-        color: MUTED,
+        fontFamily: FONT_DISPLAY,
+        fontSize: 17,
+        fontWeight: 500,
+        letterSpacing: "-0.02em",
+        color: INK,
         textDecoration: "none",
     },
     copyright: {
         margin: 0,
-        fontSize: 14.5,
+        fontFamily: FONT_SERIF,
+        fontSize: 16,
         color: FAINT,
+    },
+    // A large, cropped wordmark closing the page, as in the reference.
+    wordmark: {
+        margin: "clamp(28px, 5vw, 48px) auto 0",
+        maxWidth: 1200,
+        fontFamily: FONT_DISPLAY,
+        fontSize: "clamp(56px, 15vw, 190px)",
+        lineHeight: 0.86,
+        letterSpacing: "-0.055em",
+        fontWeight: 700,
+        color: "rgba(0, 0, 0, 0.14)",
+        userSelect: "none",
+        overflow: "hidden",
     },
 }
 
@@ -1342,5 +1478,10 @@ addPropertyControls(Footer, {
         type: ControlType.String,
         title: "Company",
         defaultValue: DEFAULT_COMPANY,
+    },
+    accent: {
+        type: ControlType.Color,
+        title: "Accent",
+        defaultValue: DEFAULT_ACCENT,
     },
 })
