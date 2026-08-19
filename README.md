@@ -10,7 +10,7 @@ plus one injected stylesheet), and the Fetch API. No other libraries.
 Everything lives in one file, `Skillpath.tsx` (~1,350 lines), which exports three
 components — `Hero`, `Courses`, `Footer`.
 
-**Live site:** https://indigo-companies-247988.framer.app/
+**Live site:** https://skillpathwebveda.framer.website/
 
 - [`note.md`](note.md) — the 200-word submission note
 - [`CHAT-TRANSCRIPT.md`](CHAT-TRANSCRIPT.md) — the full working session
