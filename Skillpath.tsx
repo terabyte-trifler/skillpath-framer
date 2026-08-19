@@ -46,7 +46,9 @@ const FONT = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 const INK = "#111114" // headings
 const MUTED = "#5F5F6B" // body copy
 const SUBTLE = "#6B6B76" // notices
-const FAINT = "#8A8A96" // copyright
+// #8A8A96 measured 3.27:1 against the canvas — below the 4.5:1 AA floor for
+// normal-size text. #6E6E7A is 4.82:1 and still reads as the quietest tone.
+const FAINT = "#6E6E7A" // copyright
 const LINE = "#ECECF1" // borders
 const SURFACE = "#FFFFFF" // cards, hero background
 const CANVAS = "#FAFAFB" // section backgrounds
@@ -517,12 +519,85 @@ type CoursesProps = {
 }
 
 /**
+ * Last line of defence against a blank section.
+ *
+ * Every known failure is already handled as state — a render error would have
+ * to be something unforeseen. But React unmounts the whole subtree when one
+ * escapes, so without a boundary "unforeseen" means the section silently
+ * disappears from the page. This turns that into the same error card the
+ * network path already uses, with a control that remounts and refetches.
+ *
+ * It has to be a class: getDerivedStateFromError has no hook equivalent.
+ */
+class Boundary extends React.Component<
+    {
+        accent?: string
+        style?: CSSProperties
+        children?: React.ReactNode
+    },
+    { failed: boolean }
+> {
+    state = { failed: false }
+
+    static getDerivedStateFromError() {
+        return { failed: true }
+    }
+
+    componentDidCatch(error: unknown) {
+        // Dev-facing. The visitor sees the card below, never this.
+        console.warn("[Skillpath] render error caught by boundary:", error)
+    }
+
+    render() {
+        if (!this.state.failed) return this.props.children
+        return (
+            <section
+                style={
+                    {
+                        ...courseStyles.section,
+                        ...this.props.style,
+                        "--sp-accent": this.props.accent ?? DEFAULT_ACCENT,
+                    } as CSSProperties
+                }
+            >
+                <style>{stylesheet}</style>
+                <div style={courseStyles.inner}>
+                    <div style={courseStyles.state} role="status">
+                        <p style={courseStyles.stateTitle}>
+                            Something went wrong in this section.
+                        </p>
+                        <p style={courseStyles.stateBody}>
+                            The rest of the page is unaffected.
+                        </p>
+                        <button
+                            onClick={() => this.setState({ failed: false })}
+                            className="skillpath-retry"
+                            style={courseStyles.retry}
+                        >
+                            Reload section
+                        </button>
+                    </div>
+                </div>
+            </section>
+        )
+    }
+}
+
+/**
  * @framerIntrinsicWidth 1200
  * @framerIntrinsicHeight 900
  * @framerSupportedLayoutWidth any
  * @framerSupportedLayoutHeight auto
  */
 export function Courses(props: CoursesProps) {
+    return (
+        <Boundary accent={props.accent} style={props.style}>
+            <CoursesSection {...props} />
+        </Boundary>
+    )
+}
+
+function CoursesSection(props: CoursesProps) {
     const {
         heading = DEFAULT_HEADING,
         accent = DEFAULT_ACCENT,
@@ -967,7 +1042,11 @@ const courseStyles: Record<string, CSSProperties> = {
         boxSizing: "border-box",
     },
     sort: {
+        // A select is sized by its widest option, so it needs an explicit floor
+        // of 0 and a 100% ceiling to shrink instead of spilling out of the row.
         flex: "0 1 auto",
+        minWidth: 0,
+        maxWidth: "100%",
         padding: "11px 14px",
         fontSize: 15,
         fontFamily: "inherit",
