@@ -7,6 +7,15 @@ code component that fetches live data from a deliberately unreliable API.
 Paste it into Framer under **Assets → Code → New Code File**; all three appear
 separately in the Assets panel.
 
+Also in this repo:
+
+- **[`note.md`](note.md)** — the 200-word submission note.
+- **[`CHAT-TRANSCRIPT.md`](CHAT-TRANSCRIPT.md)** — the full working session.
+  I built this with Claude Code (Anthropic's CLI), which has no share-link
+  feature, so the transcript is exported here instead of linked. Assistant
+  replies are verbatim; tool calls are listed by name and purpose with their
+  raw output stripped, or it would be unreadable.
+
 ---
 
 ## The API, as measured
