@@ -425,8 +425,19 @@ export function Hero(props: HeroProps) {
         style,
     } = props
 
+    /**
+     * A destructuring default only fires for `undefined`. Framer's Link control
+     * can also hand back `null` or `""` once a designer clears the field, and
+     * `null.startsWith(...)` would throw — taking the entire hero blank from a
+     * cleared property control. So the value is re-checked rather than trusted.
+     */
+    const link =
+        typeof buttonLink === "string" && buttonLink.trim() !== ""
+            ? buttonLink
+            : DEFAULT_BUTTON_LINK
+
     // An in-page anchor stays in the tab; a real destination opens in a new one.
-    const isAnchor = buttonLink.startsWith("#")
+    const isAnchor = link.startsWith("#")
 
     return (
         <section
@@ -445,7 +456,7 @@ export function Hero(props: HeroProps) {
                 <a
                     className="skillpath-cta"
                     style={heroStyles.cta}
-                    href={buttonLink}
+                    href={link}
                     target={isAnchor ? undefined : "_blank"}
                     rel={isAnchor ? undefined : "noopener noreferrer"}
                 >
@@ -1111,7 +1122,15 @@ type FooterProps = {
  * @framerSupportedLayoutHeight auto
  */
 export function Footer(props: FooterProps) {
-    const { company = DEFAULT_COMPANY, links = DEFAULT_LINKS, style } = props
+    const { company, links = DEFAULT_LINKS, style } = props
+
+    // Same reason as the hero's link: a destructuring default only fires for
+    // `undefined`, and a cleared Framer text field can arrive as null or "".
+    // Without this, the notice reads "© 2026 . All rights reserved."
+    const name =
+        typeof company === "string" && company.trim() !== ""
+            ? company
+            : DEFAULT_COMPANY
 
     // Array controls can hand back holes or half-filled rows while a designer is
     // still typing, so a link needs a label before it earns a place in the markup.
@@ -1140,7 +1159,7 @@ export function Footer(props: FooterProps) {
                     ))}
                 </nav>
                 <p style={footerStyles.copyright}>
-                    © {year} {company}. All rights reserved.
+                    © {year} {name}. All rights reserved.
                 </p>
             </div>
         </footer>
